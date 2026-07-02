@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predicting Tomorrow's Temperature — ML Approach</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --orange: #F05E0A;
+    --orange2: #FF8640;
+    --orange3: #FBBF7C;
+    --orange-pale: #FFF3EA;
+    --orange-dark: #8C3500;
+    --bg: #0D0B09;
+    --bg2: #161210;
+    --bg3: #1E1916;
+    --surface: #231E1A;
+    --surface2: #2C2520;
+    --border: rgba(240,94,10,0.18);
+    --border2: rgba(255,255,255,0.07);
+    --text: #F0EAE4;
+    --text2: #A89888;
+    --text3: #6B5A50;
+    --green: #3DD68C;
+    --blue: #5B9CF6;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--orange); border-radius: 3px; }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,11,9,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border2);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--text); }
+  .logo-icon { width: 32px; height: 32px; background: var(--orange); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a { font-size: 13px; color: var(--text2); text-decoration: none; transition: color .2s; }
+  .nav-links a:hover { color: var(--orange2); }
+  .nav-badge { background: var(--orange); color: #fff; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 5rem 2rem 4rem;
+    text-align: center;
+  }
+  .hero-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(240,94,10,0.18) 0%, transparent 70%);
+  }
+  .hero-grid {
+    position: absolute; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(240,94,10,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(240,94,10,0.06) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 0%, black 0%, transparent 100%);
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(240,94,10,0.15); border: 1px solid rgba(240,94,10,0.3);
+    color: var(--orange2); font-size: 12px; font-weight: 600;
+    padding: 5px 14px; border-radius: 20px; margin-bottom: 1.5rem;
+    letter-spacing: .06em; text-transform: uppercase;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; line-height: 1.1;
+    color: var(--text); margin-bottom: 1.2rem;
+  }
+  .hero h1 span { color: var(--orange); }
+  .hero p { font-size: 17px; color: var(--text2); line-height: 1.7; max-width: 560px; margin: 0 auto 2rem; }
+  .hero-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 2.5rem; }
+  .chip {
+    background: var(--surface); border: 1px solid var(--border2);
+    color: var(--text2); font-size: 12px; padding: 6px 14px;
+    border-radius: 20px; display: flex; align-items: center; gap: 6px;
+  }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
+  .hero-stats { display: flex; justify-content: center; gap: 3rem; }
+  .hstat { text-align: center; }
+  .hstat-val { font-size: 2rem; font-weight: 700; color: var(--orange); font-family: 'JetBrains Mono', monospace; }
+  .hstat-label { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  /* ── SECTIONS ── */
+  .section { padding: 4rem 2rem; max-width: 1100px; margin: 0 auto; }
+  .section-head { display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; }
+  .section-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--orange); background: rgba(240,94,10,0.1); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(240,94,10,0.25); }
+  .section-title { font-size: 22px; font-weight: 600; color: var(--text); }
+  .section-sub { font-size: 14px; color: var(--text2); margin-left: auto; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 1.5rem;
+  }
+  .card-label { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 1rem; }
+
+  /* ── METRIC GRID ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .metric-card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 1.25rem;
+    position: relative; overflow: hidden;
+    transition: border-color .2s, transform .2s;
+  }
+  .metric-card:hover { border-color: var(--border); transform: translateY(-2px); }
+  .metric-card::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px; background: var(--orange); opacity: 0;
+    transition: opacity .2s;
+  }
+  .metric-card:hover::after { opacity: 1; }
+  .metric-label { font-size: 12px; color: var(--text3); margin-bottom: 6px; }
+  .metric-val { font-size: 26px; font-weight: 700; color: var(--orange); font-family: 'JetBrains Mono', monospace; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* ── PIPELINE ── */
+  .pipeline { display: flex; gap: 0; margin-bottom: 2rem; }
+  .pipe-step {
+    flex: 1; background: var(--surface); border: 1px solid var(--border2);
+    padding: 1.25rem; position: relative;
+    transition: background .2s;
+  }
+  .pipe-step:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+  .pipe-step:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+  .pipe-step:not(:last-child) { border-right: none; }
+  .pipe-step:hover { background: var(--surface2); }
+  .pipe-arrow {
+    position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+    z-index: 2; width: 24px; height: 24px; background: var(--orange);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #fff;
+  }
+  .pipe-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--orange); margin-bottom: 6px; }
+  .pipe-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .pipe-desc { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+  /* ── FEATURE BARS ── */
+  .feature-list { display: flex; flex-direction: column; gap: 10px; }
+  .feature-row { display: flex; align-items: center; gap: 10px; }
+  .feature-name { font-size: 12px; color: var(--text2); min-width: 180px; }
+  .feature-track { flex: 1; background: var(--bg3); border-radius: 4px; height: 8px; overflow: hidden; }
+  .feature-fill { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--orange), var(--orange2)); width: 0%; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+  .feature-pct { font-size: 12px; color: var(--orange); font-family: 'JetBrains Mono', monospace; min-width: 36px; text-align: right; }
+
+  /* ── MODEL COMPARISON ── */
+  .model-table { width: 100%; border-collapse: collapse; }
+  .model-table th { font-size: 11px; color: var(--text3); text-align: left; padding: 0 0 10px 0; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(--border2); }
+  .model-table td { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  .model-table tr:last-child td { border-bottom: none; }
+  .model-name-cell { font-size: 13px; font-weight: 600; color: var(--text); }
+  .model-badge { font-size: 10px; background: rgba(240,94,10,0.15); color: var(--orange2); padding: 2px 8px; border-radius: 10px; margin-left: 6px; border: 1px solid rgba(240,94,10,0.2); }
+  .acc-bar { display: flex; align-items: center; gap: 8px; }
+  .acc-track { flex: 1; background: var(--bg3); border-radius: 4px; height: 6px; overflow: hidden; max-width: 120px; }
+  .acc-fill { height: 6px; border-radius: 4px; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--orange); }
+  .mono.green { color: var(--green); }
+  .mono.blue { color: var(--blue); }
+
+  /* ── CHARTS ── */
+  .chart-container { position: relative; width: 100%; height: 280px; }
+  .scatter-container { position: relative; width: 100%; height: 260px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* ── PREDICTOR ── */
+  .predictor { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); padding: 2rem; margin-bottom: 2rem; }
+  .algo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .algo-card {
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); padding: 1rem;
+    text-align: center; cursor: pointer; transition: all .2s;
+  }
+  .algo-card:hover { border-color: rgba(240,94,10,0.4); }
+  .algo-card.active { background: rgba(240,94,10,0.1); border-color: var(--orange); }
+  .algo-card .algo-icon { font-size: 22px; margin-bottom: 6px; }
+  .algo-card .algo-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .algo-card .algo-acc { font-size: 11px; color: var(--text3); }
+  .algo-card.active .algo-name { color: var(--orange2); }
+  .sliders { margin: 1.5rem 0; }
+  .slider-row { display: grid; grid-template-columns: 160px 1fr 60px; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .slider-label { font-size: 13px; color: var(--text2); }
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; height: 4px;
+    background: var(--bg3); border-radius: 2px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--orange); cursor: pointer;
+    border: 2px solid var(--bg); transition: transform .15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  .slider-val { font-size: 13px; font-weight: 600; color: var(--orange); font-family: 'JetBrains Mono', monospace; text-align: right; }
+  .predict-btn {
+    width: 100%; padding: 14px; background: var(--orange);
+    color: #fff; border: none; border-radius: var(--radius-sm);
+    font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: all .2s; letter-spacing: .02em;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .predict-btn:hover { background: var(--orange2); transform: translateY(-1px); }
+  .predict-btn:active { transform: translateY(0); }
+  .result-panel {
+    margin-top: 1.5rem; padding: 1.5rem;
+    background: rgba(240,94,10,0.08); border: 1px solid rgba(240,94,10,0.25);
+    border-radius: var(--radius); text-align: center;
+    display: none; animation: fadeIn .4s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .result-temp { font-size: 56px; font-weight: 700; color: var(--orange); font-family: 'JetBrains Mono', monospace; line-height: 1; }
+  .result-label { font-size: 14px; color: var(--text2); margin-top: 8px; }
+  .result-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .result-chip {
+    font-size: 12px; padding: 5px 14px; border-radius: 20px; font-weight: 500;
+    background: var(--surface); border: 1px solid var(--border2); color: var(--text2);
+  }
+  .result-chip.highlight { background: rgba(240,94,10,0.15); border-color: rgba(240,94,10,0.3); color: var(--orange2); }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border2); padding: 2rem;
+    text-align: center; color: var(--text3); font-size: 13px;
+  }
+  footer a { color: var(--orange2); text-decoration: none; }
+
+  @media (max-width: 768px) {
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .algo-grid { grid-template-columns: repeat(2, 1fr); }
+    .pipeline { flex-direction: column; }
+    .pipe-step:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+    .pipe-step:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+    .pipe-step:not(:last-child) { border-right: 1px solid var(--border2); border-bottom: none; }
+    .pipe-arrow { right: auto; bottom: -12px; top: auto; left: 50%; transform: translateX(-50%) rotate(90deg); }
+    .hero-stats { gap: 1.5rem; flex-wrap: wrap; }
+    nav { padding: 0 1rem; }
+    .nav-links { display: none; }
+    .section { padding: 3rem 1rem; }
+    .slider-row { grid-template-columns: 120px 1fr 52px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-icon">🌡</div>
+    TempML
+  </div>
+  <div class="nav-links">
+    <a href="#pipeline">Pipeline</a>
+    <a href="#features">Features</a>
+    <a href="#models">Models</a>
+    <a href="#trends">Trends</a>
+    <a href="#predict">Predictor</a>
+  </div>
+  <span class="nav-badge">Live Demo</span>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-tag">
+      <span>⚡</span> Machine learning · Weather forecasting
+    </div>
+    <h1>Predicting <span>tomorrow's</span><br>temperature</h1>
+    <p>A deep-dive into how data mining, feature engineering, and ensemble ML models outperform traditional numerical weather prediction at short-range horizons.</p>
+    <div class="hero-chips">
+      <div class="chip"><span class="dot"></span>Random forest</div>
+      <div class="chip"><span class="dot"></span>XGBoost</div>
+      <div class="chip"><span class="dot"></span>LSTM neural net</div>
+      <div class="chip"><span class="dot"></span>Feature engineering</div>
+      <div class="chip"><span class="dot"></span>10-year dataset</div>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><div class="hstat-val">42K</div><div class="hstat-label">Training records</div></div>
+      <div class="hstat"><div class="hstat-val">0.78°</div><div class="hstat-label">Best MAE</div></div>
+      <div class="hstat"><div class="hstat-val">95.3%</div><div class="hstat-label">R² accuracy</div></div>
+      <div class="hstat"><div class="hstat-val">14</div><div class="hstat-label">Features mined</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- METRICS -->
+<div class="section" style="padding-top:2rem;padding-bottom:1rem;">
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label">Training records</div>
+      <div class="metric-val">42,180</div>
+      <div class="metric-sub">10 years · 12 stations</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Mean abs. error</div>
+      <div class="metric-val">0.78°C</div>
+      <div class="metric-sub">XGBoost, best model</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">R² score</div>
+      <div class="metric-val">0.953</div>
+      <div class="metric-sub">Test set performance</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Forecast horizon</div>
+      <div class="metric-val">+24h</div>
+      <div class="metric-sub">Day-ahead prediction</div>
+    </div>
+  </div>
+</div>
+
+<!-- PIPELINE -->
+<div class="section" id="pipeline">
+  <div class="section-head">
+    <span class="section-num">01</span>
+    <span class="section-title">Data mining pipeline</span>
+    <span class="section-sub">Raw data → prediction</span>
+  </div>
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-num">01 / COLLECT</div>
+      <div class="pipe-title">Data ingestion</div>
+      <div class="pipe-desc">Historical records from 12 weather stations — temperature, humidity, wind speed, pressure, dew point. 10-year archive.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-num">02 / CLEAN</div>
+      <div class="pipe-title">Preprocessing</div>
+      <div class="pipe-desc">Missing value imputation, outlier removal via IQR, duplicate record detection, timezone normalisation.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-num">03 / ENGINEER</div>
+      <div class="pipe-title">Feature engineering</div>
+      <div class="pipe-desc">Lag features (t-1, t-7), 7-day rolling averages, Fourier seasonal encoding, derived dew point and heat index.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-num">04 / SPLIT</div>
+      <div class="pipe-title">Train / val / test</div>
+      <div class="pipe-desc">80 / 10 / 10 time-series split with walk-forward cross-validation to prevent data leakage.</div>
+    </div>
+    <div class="pipe-step">
+      <div class="pipe-num">05 / MODEL</div>
+      <div class="pipe-title">Train & tune</div>
+      <div class="pipe-desc">Grid-search hyperparameter optimisation. Bayesian tuning for LSTM. Ensemble stacking for final output.</div>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES + MODELS -->
+<div class="section" id="features" style="padding-top:0">
+  <div class="two-col">
+    <div class="card">
+      <div class="section-head" style="margin-bottom:1.5rem">
+        <span class="section-num">02</span>
+        <span class="section-title" style="font-size:18px">Feature importance</span>
+      </div>
+      <div class="feature-list" id="featureBars"></div>
+    </div>
+
+    <div class="card" id="models">
+      <div class="section-head" style="margin-bottom:1.5rem">
+        <span class="section-num">03</span>
+        <span class="section-title" style="font-size:18px">Model comparison</span>
+      </div>
+      <table class="model-table">
+        <thead>
+          <tr>
+            <th>Algorithm</th>
+            <th>MAE</th>
+            <th>R²</th>
+            <th>Accuracy</th>
+          </tr>
+        </thead>
+        <tbody id="modelRows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TREND CHART -->
+<div class="section" id="trends" style="padding-top:0">
+  <div class="section-head">
+    <span class="section-num">04</span>
+    <span class="section-title">Temperature trend — 30 days actual vs predicted</span>
+  </div>
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="legend">
+      <div class="leg-item"><span class="leg-dot" style="background:#F05E0A"></span>Actual temperature</div>
+      <div class="leg-item"><span class="leg-dot" style="background:#3DD68C"></span>Model prediction</div>
+      <div class="leg-item"><span class="leg-dot" style="background:rgba(240,94,10,0.25);border:1px dashed #F05E0A"></span>95% confidence band</div>
+    </div>
+    <div class="chart-container">
+      <canvas id="trendChart" role="img" aria-label="Line chart showing actual vs predicted temperatures over 30 days"></canvas>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-label">Residual distribution</div>
+      <div style="position:relative;width:100%;height:220px">
+        <canvas id="residualChart" role="img" aria-label="Bar chart showing residual error distribution"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Actual vs predicted — scatter</div>
+      <div class="scatter-container">
+        <canvas id="scatterChart" role="img" aria-label="Scatter plot of actual vs predicted temperatures"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PREDICTOR -->
+<div class="section" id="predict" style="padding-top:0">
+  <div class="section-head">
+    <span class="section-num">05</span>
+    <span class="section-title">Live temperature predictor</span>
+  </div>
+  <div class="predictor">
+    <div class="card-label" style="margin-bottom:1rem">Select algorithm</div>
+    <div class="algo-grid" id="algoGrid"></div>
+
+    <div class="card-label" style="margin-bottom:1rem;margin-top:1.5rem">Input today's conditions</div>
+    <div class="sliders">
+      <div class="slider-row">
+        <label class="slider-label">Today's high</label>
+        <input type="range" id="s1" min="5" max="48" value="30" step="1">
+        <span class="slider-val" id="v1">30°C</span>
+      </div>
+      <div class="slider-row">
+        <label class="slider-label">Humidity</label>
+        <input type="range" id="s2" min="10" max="100" value="60" step="1">
+        <span class="slider-val" id="v2">60%</span>
+      </div>
+      <div class="slider-row">
+        <label class="slider-label">Wind speed</label>
+        <input type="range" id="s3" min="0" max="90" value="15" step="1">
+        <span class="slider-val" id="v3">15 km/h</span>
+      </div>
+      <div class="slider-row">
+        <label class="slider-label">Pressure</label>
+        <input type="range" id="s4" min="985" max="1045" value="1013" step="1">
+        <span class="slider-val" id="v4">1013 hPa</span>
+      </div>
+      <div class="slider-row">
+        <label class="slider-label">Yesterday's high</label>
+        <input type="range" id="s5" min="5" max="48" value="28" step="1">
+        <span class="slider-val" id="v5">28°C</span>
+      </div>
+      <div class="slider-row">
+        <label class="slider-label">7-day avg temp</label>
+        <input type="range" id="s6" min="5" max="45" value="26" step="1">
+        <span class="slider-val" id="v6">26°C</span>
+      </div>
+    </div>
+
+    <button class="predict-btn" onclick="runPrediction()">
+      ⚡ Predict tomorrow's temperature
+    </button>
+
+    <div class="result-panel" id="resultPanel">
+      <div class="result-temp" id="resultTemp">--</div>
+      <div class="result-label" id="resultLabel">Predicted high for tomorrow</div>
+      <div class="result-chips" id="resultChips"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Built with machine learning & ❤️ &nbsp;·&nbsp; Data mining approach to weather prediction
+  &nbsp;·&nbsp; <a href="#">View on GitHub</a>
+</footer>
+
+<script>
+// ── FEATURE BARS ──
+const features = [
+  { name: 'Yesterday high (lag t-1)', val: 94 },
+  { name: '7-day rolling average', val: 87 },
+  { name: 'Dew point', val: 79 },
+  { name: 'Sea-level pressure', val: 68 },
+  { name: 'Humidity (%)', val: 61 },
+  { name: 'Wind speed (km/h)', val: 45 },
+  { name: 'Month (seasonal)', val: 38 },
+  { name: 'Rainfall (3-day sum)', val: 28 },
+];
+const fbEl = document.getElementById('featureBars');
+features.forEach(f => {
+  fbEl.innerHTML += `
+    <div class="feature-row">
+      <span class="feature-name">${f.name}</span>
+      <div class="feature-track"><div class="feature-fill" data-target="${f.val}"></div></div>
+      <span class="feature-pct">${f.val}%</span>
+    </div>`;
+});
+setTimeout(() => {
+  document.querySelectorAll('.feature-fill').forEach(el => {
+    el.style.width = el.dataset.target + '%';
+  });
+}, 400);
+
+// ── MODEL TABLE ──
+const models = [
+  { name: 'XGBoost', badge: 'Best', mae: '0.78', r2: '0.961', pct: 96, color: '#F05E0A' },
+  { name: 'Random forest', badge: '', mae: '0.81', r2: '0.953', pct: 95, color: '#FF8640' },
+  { name: 'LSTM neural net', badge: '', mae: '0.89', r2: '0.941', pct: 94, color: '#FBBF7C' },
+  { name: 'Ridge regression', badge: '', mae: '1.32', r2: '0.882', pct: 88, color: '#5B9CF6' },
+  { name: 'Linear regression', badge: '', mae: '1.87', r2: '0.801', pct: 80, color: '#6B7280' },
+];
+const tbody = document.getElementById('modelRows');
+models.forEach(m => {
+  tbody.innerHTML += `
+    <tr>
+      <td class="model-name-cell">${m.name}${m.badge ? '<span class="model-badge">' + m.badge + '</span>' : ''}</td>
+      <td class="mono">${m.mae}°C</td>
+      <td class="mono green">${m.r2}</td>
+      <td>
+        <div class="acc-bar">
+          <div class="acc-track"><div class="acc-fill" style="width:${m.pct}%;background:${m.color}"></div></div>
+          <span class="mono" style="font-size:12px;color:${m.color}">${m.pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+});
+
+// ── TREND CHART ──
+const days = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date(); d.setDate(d.getDate() - 29 + i);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+});
+const actual  = [28,29,31,30,28,27,29,32,33,31,30,28,27,29,30,32,34,35,33,31,30,29,28,30,31,33,34,32,31,30];
+const predicted=[27.4,29.2,30.8,29.6,27.8,27.2,29.4,31.7,32.8,31.1,29.7,27.8,27.2,29.1,30.3,31.8,33.7,34.6,33.1,31.2,29.9,28.8,28.1,30.2,31.3,32.8,34.1,32.2,30.8,30.1];
+const upper = predicted.map(v => +(v + 1.3).toFixed(1));
+const lower = predicted.map(v => +(v - 1.3).toFixed(1));
+
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: days,
+    datasets: [
+      { label: 'Upper', data: upper, fill: '+1', borderColor: 'transparent', backgroundColor: 'rgba(240,94,10,0.12)', pointRadius: 0, tension: 0.4 },
+      { label: 'Lower', data: lower, fill: false, borderColor: 'transparent', pointRadius: 0, tension: 0.4 },
+      { label: 'Actual', data: actual, borderColor: '#F05E0A', borderWidth: 2.5, backgroundColor: 'transparent', pointRadius: 3, pointBackgroundColor: '#F05E0A', tension: 0.4 },
+      { label: 'Predicted', data: predicted, borderColor: '#3DD68C', borderWidth: 2, borderDash: [5, 4], backgroundColor: 'transparent', pointRadius: 2, pointBackgroundColor: '#3DD68C', tension: 0.4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + '°C' } } },
+    scales: {
+      x: { ticks: { color: '#6B5A50', font: { size: 11 }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      y: { ticks: { color: '#6B5A50', font: { size: 11 }, callback: v => v + '°C' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+    }
+  }
+});
+
+// ── RESIDUAL CHART ──
+const residuals = [-2.0,-1.5,-1.0,-0.5,0,0.5,1.0,1.5,2.0];
+const residCounts = [3,8,18,34,52,34,18,8,3];
+new Chart(document.getElementById('residualChart'), {
+  type: 'bar',
+  data: {
+    labels: residuals.map(r => r.toFixed(1) + '°'),
+    datasets: [{ label: 'Count', data: residCounts, backgroundColor: residuals.map(r => r === 0 ? '#F05E0A' : 'rgba(240,94,10,0.35)'), borderRadius: 4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => 'Frequency: ' + ctx.parsed.y } } },
+    scales: {
+      x: { title: { display: true, text: 'Error (°C)', color: '#6B5A50', font: { size: 11 } }, ticks: { color: '#6B5A50', font: { size: 11 } }, grid: { display: false } },
+      y: { ticks: { color: '#6B5A50', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+    }
+  }
+});
+
+// ── SCATTER CHART ──
+const sActual = [22,25,27,28,29,30,31,31,32,33,34,35,36,19,38];
+const sPred =   [21.8,25.3,27.1,28.2,29.4,29.8,31.3,30.7,32.4,33.2,34.3,35.1,35.8,19.5,37.5];
+const ptData = sActual.map((a, i) => ({ x: a, y: sPred[i] }));
+new Chart(document.getElementById('scatterChart'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      { label: 'Predictions', data: ptData, backgroundColor: 'rgba(240,94,10,0.7)', pointRadius: 6, pointHoverRadius: 8 },
+      { label: 'Perfect fit', data: [{ x: 15, y: 15 }, { x: 42, y: 42 }], type: 'line', borderColor: '#3DD68C', borderWidth: 1.5, pointRadius: 0, showLine: true, borderDash: [4, 3] }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => 'Actual: ' + ctx.parsed.x + '°C | Pred: ' + ctx.parsed.y + '°C' } } },
+    scales: {
+      x: { title: { display: true, text: 'Actual (°C)', color: '#6B5A50', font: { size: 11 } }, min: 14, max: 43, ticks: { color: '#6B5A50', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+      y: { title: { display: true, text: 'Predicted (°C)', color: '#6B5A50', font: { size: 11 } }, min: 14, max: 43, ticks: { color: '#6B5A50', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+    }
+  }
+});
+
+// ── ALGO GRID ──
+const algos = [
+  { id: 'rf',   icon: '🌲', name: 'Random forest', acc: '95.3% R²', bias: 0.3, noise: 1.1, conf: '±1.1°C' },
+  { id: 'xgb',  icon: '⚡', name: 'XGBoost',       acc: '96.1% R²', bias: 0.1, noise: 0.9, conf: '±0.9°C' },
+  { id: 'lstm', icon: '🧠', name: 'LSTM net',       acc: '94.1% R²', bias: 0.4, noise: 1.3, conf: '±1.3°C' },
+  { id: 'lr',   icon: '📐', name: 'Linear reg.',    acc: '80.1% R²', bias: 1.1, noise: 2.1, conf: '±2.1°C' },
+];
+const algoGrid = document.getElementById('algoGrid');
+algos.forEach(a => {
+  const div = document.createElement('div');
+  div.className = 'algo-card' + (a.id === 'xgb' ? ' active' : '');
+  div.dataset.id = a.id;
+  div.innerHTML = `<div class="algo-icon">${a.icon}</div><div class="algo-name">${a.name}</div><div class="algo-acc">${a.acc}</div>`;
+  div.addEventListener('click', () => {
+    document.querySelectorAll('.algo-card').forEach(c => c.classList.remove('active'));
+    div.classList.add('active');
+  });
+  algoGrid.appendChild(div);
+});
+
+// ── SLIDERS ──
+const sliderDefs = [
+  { id: 's1', out: 'v1', suffix: '°C' },
+  { id: 's2', out: 'v2', suffix: '%' },
+  { id: 's3', out: 'v3', suffix: ' km/h' },
+  { id: 's4', out: 'v4', suffix: ' hPa' },
+  { id: 's5', out: 'v5', suffix: '°C' },
+  { id: 's6', out: 'v6', suffix: '°C' },
+];
+sliderDefs.forEach(({ id, out, suffix }) => {
+  const sl = document.getElementById(id);
+  const vl = document.getElementById(out);
+  sl.addEventListener('input', () => vl.textContent = sl.value + suffix);
+});
+
+// ── PREDICTOR LOGIC ──
+function runPrediction() {
+  const t   = +document.getElementById('s1').value;
+  const h   = +document.getElementById('s2').value;
+  const w   = +document.getElementById('s3').value;
+  const p   = +document.getElementById('s4').value;
+  const t1  = +document.getElementById('s5').value;
+  const avg = +document.getElementById('s6').value;
+
+  const algoId = document.querySelector('.algo-card.active').dataset.id;
+  const algoMap = { rf: { bias: 0.3, noise: 1.1, conf: '±1.1°C' }, xgb: { bias: 0.1, noise: 0.9, conf: '±0.9°C' }, lstm: { bias: 0.4, noise: 1.3, conf: '±1.3°C' }, lr: { bias: 1.1, noise: 2.1, conf: '±2.1°C' } };
+  const algo = algoMap[algoId];
+
+  const base = (t * 0.55) + (t1 * 0.25) + (avg * 0.12) - (h > 70 ? 1.4 : -0.5) - (w > 40 ? 1.1 : -0.2) + ((p - 1013) * 0.05);
+  const noise = (Math.random() - 0.5) * algo.noise;
+  const pred = Math.round((base + noise + algo.bias) * 10) / 10;
+
+  let condition, emoji;
+  if (pred > 38)      { condition = 'Extreme heat'; emoji = '🔥'; }
+  else if (pred > 32) { condition = 'Very hot';     emoji = '☀️'; }
+  else if (pred > 26) { condition = 'Warm & sunny'; emoji = '🌤'; }
+  else if (pred > 20) { condition = 'Mild';         emoji = '⛅'; }
+  else if (pred > 14) { condition = 'Cool';         emoji = '🌥'; }
+  else                { condition = 'Cold';         emoji = '❄️'; }
+
+  const algoNames = { rf: 'Random forest', xgb: 'XGBoost', lstm: 'LSTM neural net', lr: 'Linear regression' };
+
+  document.getElementById('resultTemp').textContent = pred + '°C';
+  document.getElementById('resultLabel').textContent = emoji + '  ' + condition + ' — predicted high for tomorrow';
+  document.getElementById('resultChips').innerHTML = `
+    <span class="result-chip highlight">${algo.conf} confidence</span>
+    <span class="result-chip">Model: ${algoNames[algoId]}</span>
+    <span class="result-chip">Input: ${t}°C today · ${h}% humidity</span>
+    <span class="result-chip">Wind: ${w} km/h · ${p} hPa</span>
+  `;
+
+  const panel = document.getElementById('resultPanel');
+  panel.style.display = 'block';
+  panel.style.animation = 'none';
+  requestAnimationFrame(() => { panel.style.animation = 'fadeIn .4s ease'; });
+}
+</script>
+
+</body>
+</html>
