@@ -14,3 +14,4 @@ Environmental Telemetry: Real-time metrics capturing vital maritime factors such
 Strategic AI Intranet
 Tactical AI Companion: A dedicated chat interface driven by advanced language models designed to assist with logistics, maritime mandates, and operational queries.
 Secure Uplink: Terminal panel enabling direct, asynchronous execution of administrative and operational directives.
+In-house AI chatbot
